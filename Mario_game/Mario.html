@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<LINK REL="SHORTCUT ICON" HREF="myicon.ico">
+<style>
+	a.back {
+	  cursor: pointer;
+	  position: absolute;
+	  z-index: 10;
+	  width: 180px;
+	  height: 51px;
+	  top: 65%;
+	  left: 50%;
+	  -webkit-transform: translate(-50%, -50%);
+	      -ms-transform: translate(-50%, -50%);
+	          transform: translate(-50%, -50%);
+	}
+	a.gamePlayBtn {
+	  cursor: pointer;
+	  position: absolute;
+	  z-index: 10;
+	  width: 180px;
+	  height: 51px;
+	  top: 50%;
+	  left: 50%;
+	  -webkit-transform: translate(-50%, -50%);
+	      -ms-transform: translate(-50%, -50%);
+	          transform: translate(-50%, -50%);
+	}
+</style>
+<head>
+<meta charset="UTF-8">
+<meta name="authoring-tool" content="Adobe_Animate_CC">
+<title>Mario Game</title>
+<script src="https://code.createjs.com/1.0.0/createjs.min.js"></script>
+<script src="./ndgmr.Collision.js"></script>
+<script src="Mario.js?1588663701356"></script>
+<link rel="stylesheet" href="./css/index.css">
+<script>
+var canvas, stage, exportRoot, anim_container, dom_overlay_container, fnStartAnimation;
+function init() {
+	canvas = document.getElementById("canvas");
+	anim_container = document.getElementById("animation_container");
+	dom_overlay_container = document.getElementById("dom_overlay_container");
+	var comp=AdobeAn.getComposition("07549011815F9E439FDF1195BAD37B6C");
+	var lib=comp.getLibrary();
+	var loader = new createjs.LoadQueue(false);
+	loader.addEventListener("fileload", function(evt){handleFileLoad(evt,comp)});
+	loader.addEventListener("complete", function(evt){handleComplete(evt,comp)});
+	var lib=comp.getLibrary();
+	loader.loadManifest(lib.properties.manifest);
+}
+function handleFileLoad(evt, comp) {
+	var images=comp.getImages();	
+	if (evt && (evt.item.type == "image")) { images[evt.item.id] = evt.result; }	
+}
+function handleComplete(evt,comp) {
+	var lib=comp.getLibrary();
+	var ss=comp.getSpriteSheet();
+	var queue = evt.target;
+	var ssMetadata = lib.ssMetadata;
+	for(i=0; i<ssMetadata.length; i++) {
+		ss[ssMetadata[i].name] = new createjs.SpriteSheet( {"images": [queue.getResult(ssMetadata[i].name)], "frames": ssMetadata[i].frames} )
+	}
+	exportRoot = new lib.Mario();
+	stage = new lib.Stage(canvas);
+
+	stage.addChild(exportRoot);
+
+	const speed = 10;
+	isKeydown = false;
+	Positions = 1;
+	Hp = 100;
+	const attack_coin = 10;
+	const attack_bomb = 20;
+	isStart = false;
+	coin_get = 0;
+	time = 7000;
+	counter = 1;
+	count = 1 ;
+	background_music = false;
+	bgAudio = createjs.Sound.play("bg", {loop:-1});
+	just_start = true;
+	loadint = 0;
+	
+	const sounds = [
+		{src:"./assets/bg.mp3", id:"bg"},
+		{src:"./assets/play_2.mp3", id:"play"},
+		{src:"./assets/coin_2.mp3", id:"coin"},
+		{src:"./assets/boom_2.mp3", id:"boom"},
+		{src:"./assets/bomb_2.mp3", id:"bomb"},
+	];
+	createjs.Sound.alternateExtensions = ["mp3"];
+	createjs.Sound.addEventListener("fileload", (e)=>{
+		loadint++
+		if(loadint == sounds.length){
+			document.querySelector(".loading").style.display = 'none';
+		}
+	});
+	createjs.Sound.registerSounds(sounds, "./");
+
+	var Mario = new lib.MarioUser();
+	Mario.x = 356;
+	Mario.y = 353;
+	exportRoot.addChild(Mario);
+
+	timeCoin = setInterval(()=>{
+		if(!isStart) return; 
+		let Coin = new lib.Coin();
+		Coin.x = Math.floor(Math.random() * (600 - 70 + 1) + 70);
+		Coin.y = -50;
+		exportRoot.addChildAt(Coin, 1);
+		
+		createjs.Tween.get(Coin)
+		.to({y: 400}, 2500)
+		.call(()=>{
+			console.log("can't catch coin");
+			exportRoot.removeChild(Coin);
+			Hp -= attack_coin;
+			document.querySelector(".hp").style.width = `${Hp}%`;
+		})
+		.addEventListener("change", ()=>{
+			let hit = ndgmr.checkRectCollision(Coin, Mario);
+			if(hit){
+				console.log("catch coin");
+				createjs.Sound.play("coin")
+				createjs.Tween.removeTweens(Coin); 
+				exportRoot.removeChild(Coin);
+				coin_get +=1;
+				document.querySelector(".coin_get").innerHTML = coin_get;
+			}
+		})
+	}, 2500)
+
+	function clear_bomb() {
+		clearInterval(time_bomb);
+	}
+
+	function set_bomb(time){
+		if (just_start) {
+			just_start=false;
+		}else{
+			clear_bomb();			
+		}
+		time_bomb = setInterval(()=>{
+			if(!isStart) return; 
+			let Bombs = new lib.Bomb();
+			Bombs.x = Math.floor(Math.random() * (670 - 30 + 1) + 30);
+			Bombs.y = -50;
+			exportRoot.addChildAt(Bombs, 1);
+			console.log(new Date());
+			createjs.Tween.get(Bombs)
+			.to({y: 400}, 2500)
+			.call(()=>{
+				console.log("you save from the bomb");
+				exportRoot.removeChild(Bombs);
+			})
+			.addEventListener("change", ()=>{
+				let hit = ndgmr.checkRectCollision(Bombs, Mario);
+				if(hit){
+					console.log("you hit the bomb");
+					createjs.Sound.play("bomb");
+					createjs.Tween.removeTweens(Bombs); 
+					exportRoot.removeChild(Bombs);
+					Hp -= attack_bomb;
+					document.querySelector(".hp").style.width = `${Hp}%`;
+				}
+			})
+		}, time)
+	}
+
+	set_bomb(time);
+
+	document.querySelector(".gamePlayBtn").addEventListener("click", ()=>{
+		createjs.Sound.play("play");
+		isStart = true;
+		document.querySelector(".gamePlayBtn").style.display = "none";
+		document.querySelector(".back").style.display = "none";
+		window.addEventListener("keydown", KeyDownFn);
+		window.addEventListener("keyup", KeyUpFn);
+	})
+
+
+	document.querySelector(".resetPlay").addEventListener("click",()=>{
+		window.location.reload();
+	})
+
+	document.querySelector(".upload").addEventListener("click",()=>{
+		 var win = window.open("./upload_mark.html");
+		 win.focus();
+	})
+
+	document.querySelector("#bg_music").addEventListener("click",()=>{
+		if (background_music == false) {
+			console.log("On")
+			background_music = true;
+			count += 1;	
+		}else{
+			console.log("Off")
+			background_music = false;
+		}
+	})		
+
+
+	function KeyDownFn(e){
+		if(isKeydown) return;
+		if(e.keyCode==37 || e.keyCode==39){
+			isKeydown = true;
+			Positions = e.keyCode == 39 ? 1 : -1;
+			Mario.gotoAndPlay("run");
+		}else{
+			Mario.gotoAndPlay("stop");
+		}
+	}
+
+	function KeyUpFn(e){
+		isKeydown = false;
+		Mario.gotoAndPlay("stop");		
+	}
+
+
+
+	createjs.Ticker.addEventListener("tick", tickFn)
+	function tickFn(){
+		if(Hp <= 0){
+			clearInterval(timeCoin);
+			clearInterval(time_bomb);
+			createjs.Sound.play("boom")
+			Mario.gotoAndPlay("del");
+			document.querySelector(".over").style.display = "flex";
+			window.removeEventListener("keydown", KeyDownFn)
+			window.removeEventListener("keyup", KeyUpFn)
+			createjs.Ticker.removeEventListener("tick", tickFn)
+			localStorage.setItem("mark", coin_get);
+		}
+		if(!isKeydown) return;
+		Mario.x += speed * Positions;
+		Mario.scaleX = Positions;
+		if (coin_get >= (20*counter) && time>= 4000){
+			time -= 1000;
+			counter +=1;
+			console.log(time);
+			set_bomb(time);
+		}
+		if ((background_music == true) && (count%2 == 0)) {
+			bgAudio = createjs.Sound.play("bg", {loop:-1});
+			bgAudio.volume = 0.15;
+			count += 1;
+		}else if(background_music == false){
+			bgAudio.volume=0;
+		}				
+	}
+
+	fnStartAnimation = function() {
+		createjs.Ticker.framerate = lib.properties.fps;
+		createjs.Ticker.addEventListener("tick", stage);
+	}	    
+
+	function makeResponsive(isResp, respDim, isScale, scaleType) {		
+		var lastW, lastH, lastS=1;		
+		window.addEventListener('resize', resizeCanvas);		
+		resizeCanvas();		
+		function resizeCanvas() {			
+			var w = lib.properties.width, h = lib.properties.height;			
+			var iw = window.innerWidth, ih=window.innerHeight;			
+			var pRatio = window.devicePixelRatio || 1, xRatio=iw/w, yRatio=ih/h, sRatio=1;			
+			if(isResp) {                
+				if((respDim=='width'&&lastW==iw) || (respDim=='height'&&lastH==ih)) {                    
+					sRatio = lastS;                
+				}				
+				else if(!isScale) {					
+					if(iw<w || ih<h)						
+						sRatio = Math.min(xRatio, yRatio);				
+				}				
+				else if(scaleType==1) {					
+					sRatio = Math.min(xRatio, yRatio);				
+				}				
+				else if(scaleType==2) {					
+					sRatio = Math.max(xRatio, yRatio);				
+				}			
+			}			
+			canvas.width = w*pRatio*sRatio;			
+			canvas.height = h*pRatio*sRatio;
+			canvas.style.width = dom_overlay_container.style.width = anim_container.style.width =  w*sRatio+'px';				
+			canvas.style.height = anim_container.style.height = dom_overlay_container.style.height = h*sRatio+'px';
+			stage.scaleX = pRatio*sRatio;			
+			stage.scaleY = pRatio*sRatio;			
+			lastW = iw; lastH = ih; lastS = sRatio;		
+		}
+	}
+
+	makeResponsive(false,'both',false,1);	
+	fnStartAnimation();
+}
+
+</script>
+</head>
+<body onload="init();" style="margin:0px; background-image: url('./assets/big_bg.jpg'); background-size: 100% 130%;"> 
+	<div id="app">
+		<div class="loading"></div>
+		<h1 class="coin_get">0</h1>
+		<a class="gamePlayBtn"><img src="./assets/play.png" alt=""></a>
+ 		<a class="back" href="how-play.html"><img src="./assets/HowToPlay.png" alt="" width="180px" height="31px"></a>
+ 		<div class="over">
+			<div class="box">
+				<img src="./assets/gameover.png" alt="">
+				<a class="resetPlay"><img src="./assets/play.png" alt=""></a>
+				<a class="upload"><img src="./assets/Upload.png" alt=""></a>
+			</div>
+		</div>
+		<div class="hpBar">
+			<h2>HP</h2>
+			<div class="hpBox">
+				<div class="hp"></div>
+			</div>
+		</div>	
+	<div id="animation_container" style="background-color:rgba(255, 255, 255, 1.00); width:700px; height:400px">
+		<canvas id="canvas" width="700" height="400" style="position: absolute; display: block; background-color:rgba(255, 255, 255, 1.00);" ></canvas>
+		<div id="dom_overlay_container" style="pointer-events:none; overflow:hidden; width:700px; height:400px; position: absolute; left: 0px; top: 0px; display: block;">
+		</div>
+	</div>
+	<div style="position: absolute; top: 120%">
+		<a><img id="bg_music" src="./assets/BG_on_off.png" alt="" width="400px"></a>
+	</div>
+</body>
+
+
+</html>

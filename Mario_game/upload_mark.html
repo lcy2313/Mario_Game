@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<LINK REL="SHORTCUT ICON" HREF="myicon.ico">
+<style>
+	body{
+		background-color: #70c4ce;
+	}
+	.data_input{
+		margin:0px auto;
+		position: relative;
+		top: 30px;
+	}
+	#mark{
+		font-size:250%;
+		color: #FEA14C;
+		text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
+	}
+	.marks{
+		font-size: 50px;
+		color: #FEA14C;
+		text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
+	}
+
+</style>
+<head>
+	<title>Upload Mark</title>
+</head>
+<body>
+	<div class="welcome_text" align="center">
+		<img src="./assets/Title.png" alt="" width=80%>
+	</div>
+	<div align="center" style="margin-top: 50px">
+		<img src="./assets/Mario/run4.png" alt="" width="50px">
+	</div>
+	<div class="data_input" align="center">
+		<form method="post" id="form">
+			<p style="margin: 16px 0 0 0 "><img src="./assets/Name.png" alt="" width="70px"></p>
+			<p style="margin: 5px"><input type="text" name="name" id="#name"></p>
+			<p style="margin: 5px"><img src="./assets/Score.png" alt="" width="90px"></p>
+			<p id="mark"style="margin: 5px"></p>
+			<input id="send_mark" type="hidden" name="score" value="0">
+			<p><input type="submit" value="submit" id="submitButton"></p>			
+		</form>		
+	</div>
+	<div id="Msg_from_server" align="center" style="position: relative; top: 30px;">
+		<span class="response"></span>
+	</div>
+	<div class="show_top_player" align="center" style="position: relative; top: 30px;">
+		<p align="center" class="marks" style="font-size: 70px;">The Past Player Score</p>
+		<table align="center" id="show_JSON_content" style="font-size: 30px; " width="600">
+			<tr align="center" class="marks"><td>Name</td><td>Score</td></tr>
+		</table>
+	</div>
+</body>
+
+<script>
+	mark_get = localStorage.getItem("mark");
+    document.getElementById("mark").innerHTML = mark_get;
+    document.getElementById("send_mark").value = mark_get;
+
+    $( document ).ready(function() {
+		processJson();
+	});
+
+	$("#submitButton").click(function() {
+	   	console.log("The button has been clicked"); 
+	    $.ajax({
+        	type: "post",
+            url: 'add_mark_to_json.php',
+            data: $("#form").serialize(),
+            dataType: "json",
+            success: function(data){
+            	$(".response").text(data.content);
+            },
+            error: function(data){
+            	$(".response").text("An Error Occurred!!");
+            }
+	    });
+	    return false;
+	});
+
+
+	function processJson() {
+	    $.ajax({
+	        url: 'marks.json',
+	        type: "get",
+	        dataType: "json",
+	        success: function (result) {
+				var allContent="";
+				for (thisItem in result) {
+					allContent="<tr align='center'><td>" + result[thisItem]["Name"] + "</td><td>" + result[thisItem]["Score"] + "</td></tr>" + allContent;
+				};
+				$("#show_JSON_content").empty();
+				$("#show_JSON_content").append("<tr align='center' class='marks'><td>Name</td><td>Score</td></tr>");
+				$("#show_JSON_content").append(allContent);
+				setTimeout(processJson, 2000);
+	        }
+	    });
+	}		
+
+
+
+</script>
+
+</html>
